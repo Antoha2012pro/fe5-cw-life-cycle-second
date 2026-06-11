@@ -6,17 +6,32 @@ export default class App extends Component {
     super(props)
     this.state = {
       price: "Завантаження...",
+      coinId: "bitcoin",
+      searchQuery: "",
       error: null,
     };
   };
 
   loadPrice = async () => {
+    this.setState({ price: "Завантаження..." });
+
+    const { coindId } = this.state;
+    const lowerCoinId = coinId.toLowerCase();
+
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${lowerCoinId}&vs_currencies=usd`
+
     try {
-      const response = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+      const response = await fetch(url);
       const data = await response.json();
-      this.setState({ price: `$${data.bitcoin.usd.toLocaleString()}`, error: null });
+
+      if (data[lowerCoinId]) {
+        const currentPrice = data[lowerCoinId].usd;
+        this.setState({ price: `$${currentPrice.toLocaleString()}`, error: null });
+      } else {
+        this.setState({ error: `Монету ${coindId} не знайдено (загубили)` });
+      }
     } catch (error) {
-      this.setState({error: "Помилка мережи"});
+      this.setState({ error: "Помилка мережи" });
     };
   };
 
@@ -26,20 +41,28 @@ export default class App extends Component {
   };
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevState.price !== this.state.price) {
-      console.log(this.state.price);
-    }
+    if (prevState.coinId !== this.state.coinId) {
+      this.loadPrice();
+    };
   };
 
   componentWillUnmount() {
     clearInterval(this.timer);
   };
 
+  handleSearchSubmit = (event) => {
+    event.preventDefault();
+    if (this.state.searchQuery.trim().toLowerCase() !== "") {
+      this.setState({ coinId: this.state.searchQuery.trim().toLowerCase(), error: null });
+    };
+  };
+
   render() {
     return (
       <div className='bg-white border border-slate-100 shadow-xl shadow-slate-200/50 rounded-2xl p-6 text-center transition-all'>
-        <h2 className='text-sm font-semibold text-slate-500 uppercase tracking-wider'>Курс Bitcoin</h2>
-        <p className='text-4xl font-black text-emerald-600 my-4 tracking-tight animate-pulse'>{this.state.price}</p>
+        <form className='mb-6 flex gap-2' onSubmit={this.handleSearchSubmit}>
+          <input type="text" placeholder='Введіть ID...' value={this.state.searchQuery} onChange={(event) => this.setState({searchQuery: event.target.value})} className='w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500' />
+        </form>
       </div>
     );
   };
